@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "@prisma/client": "^5.16.1",
+    "axios": "^1.4.0",
+    "dotenv": "^16.0.3",
+    "mqtt": "^4.3.7",
+    "prompt-sync": "^4.2.0"
+  },
+  "scripts": {
+    "publisher": "npx ts-node ./src/publisher.ts",
+    "check": "npx ts-node ./src/publisher.ts check",
+    "test": "npx ts-node ./src/publisher.ts test",
+    "pay": "npx ts-node ./src/publisher.ts pay",
+    "confirmpayment": "npx ts-node ./src/publisher.ts confirmpayment",
+    "ready": "npx ts-node ./src/publisher.ts ready",
+    "start": "npx ts-node ./src/subscriber.ts",
+    "start:prod": "node ./dist/subscriber.js",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@tsconfig/node18": "^2.0.0",
+    "@types/node": "^18.16.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  }
+}

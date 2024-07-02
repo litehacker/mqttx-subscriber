@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model House {
+  id        String   @id @default(cuid())
+  address   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  title     String
+  entries   Entry[]
+}
+
+model Entry {
+  houseId        String
+  id             String        @id @default(cuid())
+  title          String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  balance        Int           @default(0)
+  subscriptionId String?       @unique
+  house          House         @relation(fields: [houseId], references: [id])
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  families       Family[]
+  payments       Payment[]
+  terminals      Terminal[]
+  rides          Ride[]
+}
+
+model Subscription {
+  id             String     @id @default(cuid())
+  priceMonthly   Int
+  priceExtraUser Int
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  paymentDay     Int
+  lastPayment    DateTime?
+  rideFee        Int        @default(0)
+  entry          Entry?
+  family         Family?
+  payments       Payment[]
+  terminals      Terminal[]
+  rides          Ride[]
+}
+
+model Terminal {
+  entryId        String?
+  id             String        @id @unique
+  balance        Int           @default(0)
+  ownerId        String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  title          String
+  subscriptionId String?
+  free           Boolean?      @default(false)
+  lastOnline     DateTime?
+  active         Boolean       @default(true)
+  rides          Ride[]
+  entry          Entry?        @relation(fields: [entryId], references: [id])
+  owner          User?         @relation(fields: [ownerId], references: [id])
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  payments       Payment[]
+}
+
+model Family {
+  entryId        String
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  subscriptionId String       @unique
+  title          String
+  lastPayment    DateTime?
+  nextPayment    DateTime?
+  balance        Int          @default(0)
+  cards          Card[]
+  entry          Entry        @relation(fields: [entryId], references: [id])
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  payments       Payment[]
+  rides          Ride[]
+  members        User[]       @relation("FamilyToUser")
+}
+
+model User {
+  id          String     @id @default(cuid())
+  email       String     @unique
+  phoneNumber String     @unique
+  balance     Int        @default(0)
+  role        String     @default("user")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  fullName    String
+  payments    Payment[]
+  terminals   Terminal[]
+  families    Family[]   @relation("FamilyToUser")
+}
+
+model Card {
+  id        String    @id @unique
+  title     String?
+  content   String?
+  familyId  String?
+  pin       String    @unique
+  balance   Int       @default(0)
+  active    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  family    Family?   @relation(fields: [familyId], references: [id])
+  rides     Ride[]
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  amount         Int
+  userId         String?
+  description    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  entryId        String?
+  familyId       String?
+  subscriptionId String?
+  terminalId     String?
+
+  entry        Entry?        @relation(fields: [entryId], references: [id])
+  family       Family?       @relation(fields: [familyId], references: [id])
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  terminal     Terminal?     @relation(fields: [terminalId], references: [id])
+}
+
+model Ride {
+  id             String        @id @default(cuid())
+  cardId         String
+  terminalId     String
+  familyId       String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  amount         Int           @default(0)
+  card           Card          @relation(fields: [cardId], references: [id])
+  family         Family        @relation(fields: [familyId], references: [id])
+  terminal       Terminal      @relation(fields: [terminalId], references: [id])
+  subscriptionId String? // New field
+  entryId        String? // New field
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  entry          Entry?        @relation(fields: [entryId], references: [id])
+}
