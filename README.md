@@ -1,16 +1,45 @@
-To use the [`pm2-subscriber-conf.json`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2FC%3A%2FUsers%2Fnatce%2FOneDrive%2FDocuments%2FGitHub%2Fmqttx-subscriber%2Fpm2-subscriber-conf.json%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%5D "c:\\Users\natce\OneDrive\Documents\GitHub\mqttx-subscriber\pm2-subscriber-conf.json") file with PM2, you can follow these steps:
+To start a TypeScript application using `ts-node` with PM2, you can use an ecosystem configuration file (`ecosystem.config.js`) or directly pass the command to PM2 using the `--interpreter` flag. Here's how you can do it using both methods:
 
-1. **Install PM2**: If you haven't already installed PM2, you can do so by running `npm install pm2 -g` in your terminal. This installs PM2 globally on your system, allowing you to use it from any directory.
+### Using an Ecosystem Configuration File
 
-2. **Place the Configuration File**: Ensure that the [`pm2-subscriber-conf.json`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2FC%3A%2FUsers%2Fnatce%2FOneDrive%2FDocuments%2FGitHub%2Fmqttx-subscriber%2Fpm2-subscriber-conf.json%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%5D "c:\\Users\natce\OneDrive\Documents\GitHub\mqttx-subscriber\pm2-subscriber-conf.json") file is in the root directory of your project or in a location where you intend to run PM2. This file contains the configuration for your application, including the name, script to run, and any arguments.
+1. **Create an `ecosystem.config.js` file** in your project root with the following content:
 
-3. **Start the Application with PM2**: Navigate to the directory where your [`pm2-subscriber-conf.json`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2FC%3A%2FUsers%2Fnatce%2FOneDrive%2FDocuments%2FGitHub%2Fmqttx-subscriber%2Fpm2-subscriber-conf.json%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%5D "c:\\Users\natce\OneDrive\Documents\GitHub\mqttx-subscriber\pm2-subscriber-conf.json") file is located. Then, use the following command to start your application using the configuration file:
-
-```shell
-pm2 start pm2-subscriber-conf.json
+```javascript
+module.exports = {
+  apps: [
+    {
+      name: "my-ts-app",
+      script: "node_modules/.bin/ts-node",
+      args: "./src/subscriber.ts",
+      interpreter: "none", // This tells PM2 to not use any specific interpreter
+    },
+  ],
+};
 ```
 
-This command tells PM2 to read the configuration from your `pm2-subscriber-conf.json` file and start the application based on the settings defined within. In your case, it will start the application named "subscriber" using `npm run start:prod` as specified in the "script" and "args" fields.
+2. **Start the application with PM2** by running:
+
+```bash
+pm2 start ecosystem.config.js
+```
+
+This method allows you to easily manage multiple applications and their configurations.
+
+### Using the PM2 Command Directly
+
+Alternatively, you can start your application directly with PM2 without creating an `ecosystem.config.js` file, using the `--interpreter` flag:
+
+```bash
+pm2 start node_modules/.bin/ts-node --interpreter none -- ./src/subscriber.ts
+```
+
+Here, you're telling PM2 to use `ts-node` as the script to run, with `none` as the interpreter (meaning it should just execute the script directly), and then specifying the path to your TypeScript file.
+
+### Note
+
+- Ensure `ts-node` and `typescript` are installed in your project. If not, you can install them using npm or yarn (`npm install ts-node typescript --save`).
+- The `--interpreter none` option is used to tell PM2 not to prepend the command with `node`. Since `ts-node` is an executable that runs your TypeScript files, you don't need Node.js to run it explicitly.
+- If you're using PM2 in a production environment, it's a good practice to compile your TypeScript to JavaScript and run the compiled code directly with Node.js. This approach improves performance and stability.
 
 4. **Verify the Application is Running**: You can verify that your application has started successfully by running:
 

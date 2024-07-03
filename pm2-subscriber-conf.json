@@ -1,9 +1,0 @@
-{
-  "apps": [
-    {
-      "name": "subscriber",
-      "script": "npm",
-      "args": "run start:prod"
-    }
-  ]
-}
