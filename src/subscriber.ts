@@ -46,15 +46,15 @@ const updatedDataChunks: {
 } = {};
 
 client.on("error", function (error) {
-  console.log("error", error);
+  console.error("error", error);
 });
 client.on("connect", function () {
-  console.log("connected to broker");
+  console.info("connected to broker");
   client.subscribe(_topicRead, function (err) {
     if (!err) {
       console.log("connected,_topicRead:", _topicRead);
     } else {
-      console.log("error", String(err));
+      console.error("error", String(err));
     }
   });
 });
@@ -100,18 +100,18 @@ client.on("message", async function (topic, message) {
             }
           })
           .catch((error) => {
-            console.log(error);
+            console.error(error);
             send200(client, terminal.terminalID);
           });
     } else if (data.operationType === "makepayment") {
-      console.log("makepayment", data);
+      console.info("makepayment", data);
     } else if (
       data.operationType === "payment" &&
       data.content &&
       topic === _topicRead
     ) {
       if (!data.content.cardID) {
-        console.log("missing ", data.content.cardID, data.content.userID);
+        console.error("missing ", data.content.cardID, data.content.userID);
         send400(client, data.content.terminalID);
         return;
       } else {
@@ -171,11 +171,11 @@ client.on("message", async function (topic, message) {
               qos: 2,
             }
           );
-          console.log(e);
+          console.error(e);
         });
     }
   } catch (e) {
-    console.log(e);
+    console.error(e);
   }
 });
 function sendErase(client: MqttClient, id: string, lastAddress: string) {

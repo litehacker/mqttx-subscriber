@@ -34,12 +34,12 @@ if (args[0] === "check") {
 } else if (args[0] === "confirmpayment") {
   data = consfirm_payment;
 } else {
-  console.log("arguments not found ", process.argv);
+  console.error("arguments not found ", process.argv);
   data = "test";
 }
 
 client.on("connect", function () {
-  console.log(data);
+  // console.log(data);
   client.publish(_topic, data, () => {
     client.end();
   });

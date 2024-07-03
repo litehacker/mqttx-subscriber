@@ -95,14 +95,12 @@ const MakePayment = async ({
   terminalID: string;
   response: Response;
 }): Promise<MakePaymentResponse> => {
-  console.log("Starting MakePayment() for card");
   try {
     return await prisma.$transaction(async (prisma) => {
       const card = await getCardWithDetails({ prisma, cardID });
       if (!card) return failedResponse(STATUS_CODES.FAILED_MISSING_CARD);
       if (!card.active)
         return failedResponse(STATUS_CODES.FAILED_INACTIVE_CARD);
-      console.log("Card details", card.family);
       const { family } = card;
       if (isNextPaymentInFuture({ family })) {
         await createRide({
@@ -269,12 +267,6 @@ async function processPayment({
     subscription: Subscription;
   };
 }) {
-  console.log(
-    "Processing payment",
-    family.id,
-    family.subscriptionId,
-    family.subscription.rideFee
-  );
   const updatedFamily = await prisma.family.update({
     where: { id: family.id },
     data: { balance: { decrement: family.subscription.rideFee } },
