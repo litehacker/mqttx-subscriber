@@ -2,16 +2,7 @@ import axios from "axios";
 import * as dotenv from "dotenv";
 import { MakePaymentResponse, Message } from "../types";
 import { MqttClient } from "mqtt";
-import { EventEmitter } from "node:events";
-import {
-  Card,
-  Entry,
-  Family,
-  Payment,
-  Subscription,
-  Terminal,
-  User,
-} from "@prisma/client";
+import { Card, Family, Subscription } from "@prisma/client";
 import prisma from "../../prisma/client";
 dotenv.config();
 const STATUS_CODES = {
@@ -76,9 +67,7 @@ export const payForRide = async ({ response }: { response: Response }) => {
       terminalID: response.getTerminalID(),
       response,
     });
-    if (paymentResponse.status === "success") {
-      response.sendBalance(paymentResponse.balance);
-    } else {
+    if (paymentResponse.status !== "success") {
       response.sendFailed(paymentResponse.statusNumber);
     }
   } catch (e) {
