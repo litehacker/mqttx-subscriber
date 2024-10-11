@@ -1,9 +1,9 @@
 import { MqttClient, connect } from "mqtt"; // import connect from mqtt
 import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 import { Response, checkTerminalUpdate, payForRide } from "./provider";
-import EventEmitter from "node:events";
 import { Message } from "./types";
 import { getSubscriptionFee } from "./provider/send-terminal-config";
+import { TerminalMonitorService } from "./online-state-tg";
 const TerminalResponseStatus = {
   200: { value: "<200!", description: "CONNECTION_CHECK_STATUS" },
   201: { value: "<201!", description: "GET_BALANCE_STATUS" },
@@ -44,12 +44,16 @@ const updatedDataChunks: {
     lastAddress: string;
   };
 } = {};
+const monitorService = new TerminalMonitorService(client, _topicRead);
 
 client.on("error", function (error) {
   console.error("error", error);
 });
 client.on("connect", function () {
   console.info("connected to broker");
+
+  monitorService.start();
+  console.log();
   client.subscribe(_topicRead, function (err) {
     if (!err) {
       console.log("connected,_topicRead:", _topicRead);
@@ -178,6 +182,7 @@ client.on("message", async function (topic, message) {
     console.error(e);
   }
 });
+client.on("disconnect", () => monitorService.stop());
 function sendErase(client: MqttClient, id: string, lastAddress: string) {
   client.publish(
     "t" + id,
