@@ -218,7 +218,15 @@ function isNextPaymentInFuture({
     subscription: Subscription;
   };
 }) {
-  return family?.nextPayment && new Date(family?.nextPayment) > new Date();
+  const lastPaymentDate = new Date(family?.subscription?.lastPayment ?? 0);
+  const currentDate = new Date();
+
+  // Calculate the same day of the previous month
+  const sameDayPreviousMonth = new Date(currentDate);
+  sameDayPreviousMonth.setMonth(currentDate.getMonth() - 1);
+
+  const needsToPay = lastPaymentDate < sameDayPreviousMonth;
+  return !needsToPay;
 }
 
 async function createRide({
