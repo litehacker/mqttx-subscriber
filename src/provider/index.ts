@@ -71,6 +71,7 @@ export const payForRide = async ({ response }: { response: Response }) => {
       response.sendFailed(paymentResponse.statusNumber);
     }
   } catch (e) {
+    console.error("Error processing payment:", e);
     response.sendFailed(296);
   }
 };
@@ -87,7 +88,10 @@ const MakePayment = async ({
   try {
     return await prisma.$transaction(async (prisma) => {
       const card = await getCardWithDetails({ prisma, cardID });
-      if (!card) return failedResponse(STATUS_CODES.FAILED_MISSING_CARD);
+      if (!card) {
+        console.error("Card not found");
+        return failedResponse(STATUS_CODES.FAILED_MISSING_CARD);
+      }
       if (!card.active)
         return failedResponse(STATUS_CODES.FAILED_INACTIVE_CARD);
       const { family } = card;
@@ -114,7 +118,6 @@ const MakePayment = async ({
       return successResponse(family.balance);
     });
   } catch (error) {
-    console.error("Transaction error:", error);
     throw new Error("Transaction error. Try again.");
   }
 };

@@ -28,8 +28,8 @@ model Entry {
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
   families       Family[]
   payments       Payment[]
-  terminals      Terminal[]
   rides          Ride[]
+  terminals      Terminal[]
 }
 
 model Subscription {
@@ -38,14 +38,13 @@ model Subscription {
   priceExtraUser Int
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
-  paymentDay     Int
   lastPayment    DateTime?
   rideFee        Int        @default(0)
   entry          Entry?
   family         Family?
   payments       Payment[]
-  terminals      Terminal[]
   rides          Ride[]
+  terminals      Terminal[]
 }
 
 model Terminal {
@@ -60,11 +59,11 @@ model Terminal {
   free           Boolean?      @default(false)
   lastOnline     DateTime?
   active         Boolean       @default(true)
+  payments       Payment[]
   rides          Ride[]
   entry          Entry?        @relation(fields: [entryId], references: [id])
   owner          User?         @relation(fields: [ownerId], references: [id])
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  payments       Payment[]
 }
 
 model Family {
@@ -75,8 +74,8 @@ model Family {
   subscriptionId String       @unique
   title          String
   lastPayment    DateTime?
-  nextPayment    DateTime?
   balance        Int          @default(0)
+  nextPayment    DateTime?
   cards          Card[]
   entry          Entry        @relation(fields: [entryId], references: [id])
   subscription   Subscription @relation(fields: [subscriptionId], references: [id])
@@ -114,22 +113,24 @@ model Card {
 }
 
 model Payment {
-  id             String   @id @default(cuid())
-  amount         Int
-  userId         String?
-  description    String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  entryId        String?
-  familyId       String?
-  subscriptionId String?
-  terminalId     String?
-
-  entry        Entry?        @relation(fields: [entryId], references: [id])
-  family       Family?       @relation(fields: [familyId], references: [id])
-  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
-  user         User?         @relation(fields: [userId], references: [id])
-  terminal     Terminal?     @relation(fields: [terminalId], references: [id])
+  id                String        @id @default(cuid())
+  amount            Int
+  userId            String?
+  description       String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  entryId           String?
+  familyId          String?
+  subscriptionId    String?
+  terminalId        String?
+  commission        Int           @default(0)
+  receiptId         Int           @unique @default(autoincrement())
+  bankTransactionId String?       @unique
+  entry             Entry?        @relation(fields: [entryId], references: [id])
+  family            Family?       @relation(fields: [familyId], references: [id])
+  subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
+  terminal          Terminal?     @relation(fields: [terminalId], references: [id])
+  user              User?         @relation(fields: [userId], references: [id])
 }
 
 model Ride {
@@ -140,11 +141,11 @@ model Ride {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   amount         Int           @default(0)
+  entryId        String?
+  subscriptionId String?
   card           Card          @relation(fields: [cardId], references: [id])
-  family         Family        @relation(fields: [familyId], references: [id])
-  terminal       Terminal      @relation(fields: [terminalId], references: [id])
-  subscriptionId String? // New field
-  entryId        String? // New field
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
   entry          Entry?        @relation(fields: [entryId], references: [id])
+  family         Family        @relation(fields: [familyId], references: [id])
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  terminal       Terminal      @relation(fields: [terminalId], references: [id])
 }
