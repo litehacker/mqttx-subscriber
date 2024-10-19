@@ -31,7 +31,7 @@ const client = connect(
     clientId: "emqx_nodejs_" + Math.random().toString(16).substring(2, 8),
     username: process.env.MQTT_BROKER_USERNAME,
     password: process.env.MQTT_BROKER_PASSWORD,
-    // clean: true,
+    clean: true,
   }
 ); // create a client
 const _topicRead = process.env.TOPICTOREAD;
