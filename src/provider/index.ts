@@ -28,9 +28,8 @@ export const checkTerminalUpdate = (
     const config = {
       method: "post",
       maxBodyLength: Infinity,
-      url:
-        process.env.UPDATE_CHECK_URL ??
-        "https://us-central1-lift-os.cloudfunctions.net/checkFirmwareUpdate",
+      url: process.env.UPDATE_CHECK_URL,
+
       headers: {
         "Content-Type": "application/json",
       },
@@ -163,6 +162,7 @@ export class Response {
       "<" + status + "R!",
       {
         qos: 2,
+        retain: false,
       },
       callback
     );
@@ -173,6 +173,7 @@ export class Response {
       "<201," + balance / 100 + "!",
       {
         qos: 2,
+        retain: false,
       },
       callback
     );

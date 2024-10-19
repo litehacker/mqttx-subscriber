@@ -31,6 +31,7 @@ const client = connect(
     clientId: "emqx_nodejs_" + Math.random().toString(16).substring(2, 8),
     username: process.env.MQTT_BROKER_USERNAME,
     password: process.env.MQTT_BROKER_PASSWORD,
+    // clean: true,
   }
 ); // create a client
 const _topicRead = process.env.TOPICTOREAD;
@@ -72,41 +73,41 @@ client.on("message", async function (topic, message) {
         firmwareVersion: data.content.firmwareVersion,
         terminalID: data.content.terminalID,
       };
-      if (terminal.firmwareVersion && terminal.terminalID)
-        await checkTerminalUpdate(terminal)
-          .then((response) => {
-            if (response.update && response._firmware) {
-              updatedDataChunks[terminal.terminalID] = {
-                chunks: splitString(response._firmware.Code, 960),
-                index: 0,
-                version: response._firmware.Version,
-                startTime: new Date(),
-                lastAddress: response._firmware.LastAddress,
-              };
-              sendErase(
-                client,
-                terminal.terminalID,
-                response._firmware.LastAddress
-              );
-
-              setTimeout(() => {
-                if (
-                  updatedDataChunks[terminal.terminalID] &&
-                  updatedDataChunks[terminal.terminalID].index !==
-                    updatedDataChunks[terminal.terminalID].chunks.length - 1
-                ) {
-                  delete updatedDataChunks[data.content.terminalID];
-                  return;
-                }
-              }, 180000);
-            } else {
-              send200(client, terminal.terminalID);
-            }
-          })
-          .catch((error) => {
-            console.error(error);
-            send200(client, terminal.terminalID);
-          });
+      if (terminal.firmwareVersion && terminal.terminalID) {
+        // await checkTerminalUpdate(terminal)
+        //   .then((response) => {
+        //     if (response.update && response._firmware) {
+        //       updatedDataChunks[terminal.terminalID] = {
+        //         chunks: splitString(response._firmware.Code, 960),
+        //         index: 0,
+        //         version: response._firmware.Version,
+        //         startTime: new Date(),
+        //         lastAddress: response._firmware.LastAddress,
+        //       };
+        //       sendErase(
+        //         client,
+        //         terminal.terminalID,
+        //         response._firmware.LastAddress
+        //       );
+        //       setTimeout(() => {
+        //         if (
+        //           updatedDataChunks[terminal.terminalID] &&
+        //           updatedDataChunks[terminal.terminalID].index !==
+        //             updatedDataChunks[terminal.terminalID].chunks.length - 1
+        //         ) {
+        //           delete updatedDataChunks[data.content.terminalID];
+        //           return;
+        //         }
+        //       }, 180000);
+        //     } else {
+        //       send200(client, terminal.terminalID);
+        //     }
+        //   })
+        //   .catch((error) => {
+        //     console.error(error);
+        //     send200(client, terminal.terminalID);
+        //   });
+      }
     } else if (data.operationType === "makepayment") {
       console.info("makepayment", data);
     } else if (
@@ -164,6 +165,7 @@ client.on("message", async function (topic, message) {
         .then((fee) => {
           client.publish("t" + data.content.terminalID, "<222," + fee + "!", {
             qos: 2,
+            retain: false,
           });
           console.log("fee sent", fee);
         })
@@ -173,6 +175,7 @@ client.on("message", async function (topic, message) {
             TerminalResponseStatus["494"].value,
             {
               qos: 2,
+              retain: false,
             }
           );
           console.error(e);
@@ -189,6 +192,7 @@ function sendErase(client: MqttClient, id: string, lastAddress: string) {
     "<ERASE " + lastAddress + "!",
     {
       qos: 2,
+      retain: false,
     },
     () => {
       console.log("erase sent", "t" + id, "<ERASE " + lastAddress + "!");
@@ -206,6 +210,7 @@ function sendChunk(
     "<" + chunk,
     {
       qos: 2,
+      retain: false,
     },
     callback
   );
@@ -214,12 +219,14 @@ function sendChunk(
 function send400(client: MqttClient, id: string) {
   client.publish("t" + id, "<400R!", {
     qos: 2,
+    retain: false,
   });
 }
 
 function sendEnd(client: MqttClient, id: string, version: number) {
   client.publish("t" + id, "<END " + version + "!", {
     qos: 2,
+    retain: false,
   });
 }
 
@@ -231,11 +238,13 @@ function sendConfig(client: MqttClient, terminalID: string, travelFee: number) {
 function send200(client: MqttClient, id: string) {
   client.publish("t" + id, "<200R!", {
     qos: 2,
+    retain: false,
   });
 }
 function sendGo(client: MqttClient, id: string) {
   client.publish("t" + id, "<GO!", {
     qos: 2,
+    retain: false,
   });
 }
 function splitString(code: string, chunkSize: number): string[] {
