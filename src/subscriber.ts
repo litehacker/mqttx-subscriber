@@ -65,8 +65,11 @@ client.on("connect", function () {
 });
 
 client.on("message", async function (topic, message) {
+  console.log("message received", message.toString("utf-8"));
+
   try {
     const data: Message["payload"] = JSON.parse(message.toString("utf-8"));
+    console.log("data", data);
 
     if (data.operationType === "check") {
       const terminal = {
@@ -115,6 +118,7 @@ client.on("message", async function (topic, message) {
       data.content &&
       topic === _topicRead
     ) {
+      console.log(data.operationType, data.content, topic);
       if (!data.content.cardID) {
         console.error("missing ", data.content.cardID, data.content.userID);
         send400(client, data.content.terminalID);
