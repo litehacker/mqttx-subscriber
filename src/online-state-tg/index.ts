@@ -1,12 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { MqttClient } from "mqtt";
 import prisma from "../../prisma/client";
-import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+import * as dotenv from "dotenv";
 import { TelegramNotificationService } from "../telegram";
 
 interface TerminalStatus {
   lastSeen: Date;
   isOnline: boolean;
+  lastStatusSent: "online" | "offline"; // Keep track of last sent status
 }
 
 interface CheckMessage {
@@ -70,6 +71,7 @@ export class TerminalMonitorService {
         this.terminalStatuses.set(terminal.id, {
           lastSeen: new Date(0), // Set to epoch initially
           isOnline: false,
+          lastStatusSent: "offline", // Initial status is offline
         });
       }
     });
@@ -104,25 +106,22 @@ export class TerminalMonitorService {
         const status = this.terminalStatuses.get(terminalId);
 
         if (status) {
-          const wasOffline = !status.isOnline;
           const now = new Date();
-
-          // Update last seen time and mark as online
           status.lastSeen = now;
           status.isOnline = true;
 
-          // If the terminal was offline, mark it as online
-          if (wasOffline) {
+          // If terminal was offline and has just come back online, notify
+          if (status.lastStatusSent === "offline") {
             await this.telegramService.sendTerminalStatusUpdate(
               terminalId,
               "online"
             );
+            status.lastStatusSent = "online"; // Update last sent status
           }
         } else {
           await this.telegramService.sendMessage(
             `Received check from unknown terminal: ${terminalId}`
           );
-
           console.log(`Received check from unknown terminal: ${terminalId}`);
         }
       }
@@ -134,7 +133,7 @@ export class TerminalMonitorService {
   private startIntervals(): void {
     this.checkInterval = setInterval(
       () => this.checkTerminalStatuses(),
-      1 * 60000 // Check every minute
+      60000 // Check every minute
     );
 
     this.fetchInterval = setInterval(
@@ -153,9 +152,14 @@ export class TerminalMonitorService {
         const timeSinceLastSeen = now.getTime() - status.lastSeen.getTime();
 
         // If the terminal has not sent a check message in the last 12 minutes
-        if (status.isOnline && timeSinceLastSeen > 12 * 60000) {
+        if (timeSinceLastSeen > 12 * 60 * 1000) {
           status.isOnline = false;
-          offlineTerminals.push(terminalId);
+
+          // Only send offline status if the last sent status was online
+          if (status.lastStatusSent === "online") {
+            offlineTerminals.push(terminalId);
+            status.lastStatusSent = "offline"; // Update last sent status
+          }
         }
       });
 

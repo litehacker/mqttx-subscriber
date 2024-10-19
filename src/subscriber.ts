@@ -51,8 +51,6 @@ client.on("error", function (error) {
   console.error("error", error);
 });
 client.on("connect", function () {
-  console.info("connected to broker, environment:", process.env.NODE_ENV);
-
   monitorService.start();
   console.log();
   client.subscribe(_topicRead, function (err) {
@@ -65,11 +63,8 @@ client.on("connect", function () {
 });
 
 client.on("message", async function (topic, message) {
-  console.log("message received", message.toString("utf-8"));
-
   try {
     const data: Message["payload"] = JSON.parse(message.toString("utf-8"));
-    console.log("data", data);
 
     if (data.operationType === "check") {
       const terminal = {
@@ -118,13 +113,11 @@ client.on("message", async function (topic, message) {
       data.content &&
       topic === _topicRead
     ) {
-      console.log(data.operationType, data.content, topic);
       if (!data.content.cardID) {
         console.error("missing ", data.content.cardID, data.content.userID);
         send400(client, data.content.terminalID);
         return;
       } else {
-        console.log("Payment request started");
         const response = new Response(
           client,
           data.content.terminalID,
@@ -132,9 +125,6 @@ client.on("message", async function (topic, message) {
           data.content.userID ?? "unknown",
           false
         );
-        console.log("Payment request received", {
-          response,
-        });
         payForRide({ response });
       }
     } else if (data.operationType === "acknowledge") {
