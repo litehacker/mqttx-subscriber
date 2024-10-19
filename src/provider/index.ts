@@ -61,6 +61,9 @@ export const checkTerminalUpdate = (
 
 export const payForRide = async ({ response }: { response: Response }) => {
   try {
+    console.log("Payment request received", {
+      response,
+    });
     const paymentResponse = await MakePayment({
       cardID: response.getCardID(),
       terminalID: response.getTerminalID(),
