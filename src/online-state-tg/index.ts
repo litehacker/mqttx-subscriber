@@ -2,8 +2,8 @@ import { PrismaClient } from "@prisma/client";
 import { MqttClient } from "mqtt";
 import prisma from "../../prisma/client";
 import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
-
 import { TelegramNotificationService } from "../telegram";
+
 interface TerminalStatus {
   lastSeen: Date;
   isOnline: boolean;
@@ -26,14 +26,17 @@ export class TerminalMonitorService {
   private checkInterval!: NodeJS.Timeout;
   private fetchInterval!: NodeJS.Timeout;
   private telegramService: TelegramNotificationService;
+
   constructor(mqttClient: MqttClient, topic: string) {
     this.prisma = prisma;
     this.mqttClient = mqttClient;
     this.topic = topic;
     this.terminalStatuses = new Map();
+
     if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
       throw new Error("Missing environment variables");
     }
+
     this.telegramService = new TelegramNotificationService(
       process.env.TELEGRAM_BOT_TOKEN,
       process.env.TELEGRAM_CHAT_ID
@@ -65,7 +68,7 @@ export class TerminalMonitorService {
     activeTerminals.forEach((terminal) => {
       if (!this.terminalStatuses.has(terminal.id)) {
         this.terminalStatuses.set(terminal.id, {
-          lastSeen: new Date(0),
+          lastSeen: new Date(0), // Set to epoch initially
           isOnline: false,
         });
       }
@@ -102,9 +105,13 @@ export class TerminalMonitorService {
 
         if (status) {
           const wasOffline = !status.isOnline;
-          status.lastSeen = new Date();
+          const now = new Date();
+
+          // Update last seen time and mark as online
+          status.lastSeen = now;
           status.isOnline = true;
 
+          // If the terminal was offline, mark it as online
           if (wasOffline) {
             await this.telegramService.sendTerminalStatusUpdate(
               terminalId,
@@ -127,30 +134,32 @@ export class TerminalMonitorService {
   private startIntervals(): void {
     this.checkInterval = setInterval(
       () => this.checkTerminalStatuses(),
-      12 * 60000
-    ); // Every 12 minute
+      1 * 60000 // Check every minute
+    );
+
     this.fetchInterval = setInterval(
       () => this.fetchActiveTerminals(),
-      3600000
-    ); // Every hour
+      3600000 // Every hour
+    );
   }
 
   private async checkTerminalStatuses(): Promise<void> {
     const now = new Date();
     const offlineTerminals: string[] = [];
+
     try {
       // Identify offline terminals
       this.terminalStatuses.forEach((status, terminalId) => {
-        if (
-          status.isOnline &&
-          now.getTime() - status.lastSeen.getTime() > 60000
-        ) {
+        const timeSinceLastSeen = now.getTime() - status.lastSeen.getTime();
+
+        // If the terminal has not sent a check message in the last 12 minutes
+        if (status.isOnline && timeSinceLastSeen > 12 * 60000) {
           status.isOnline = false;
           offlineTerminals.push(terminalId);
         }
       });
 
-      // Send status updates concurrently
+      // Send status updates for offline terminals concurrently
       await Promise.all(
         offlineTerminals.map(async (terminalId) => {
           try {

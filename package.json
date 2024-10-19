@@ -1,11 +1,4 @@
 {
-  "dependencies": {
-    "@prisma/client": "^5.16.1",
-    "axios": "^1.4.0",
-    "dotenv": "^16.4.5",
-    "mqtt": "^5.3.5",
-    "prompt-sync": "^4.2.0"
-  },
   "scripts": {
     "publisher": "npx ts-node ./src/publisher.ts",
     "check": "npx ts-node ./src/publisher.ts check",
@@ -16,6 +9,13 @@
     "start": "npx ts-node ./src/subscriber.ts",
     "start:prod": "node ./dist/subscriber.js",
     "build": "tsc"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.16.1",
+    "axios": "^1.4.0",
+    "dotenv": "^16.4.5",
+    "mqtt": "^5.3.5",
+    "prompt-sync": "^4.2.0"
   },
   "devDependencies": {
     "@tsconfig/node18": "^2.0.0",
