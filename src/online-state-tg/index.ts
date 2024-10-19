@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { MqttClient } from "mqtt";
 import prisma from "../../prisma/client";
 import * as dotenv from "dotenv";
-import { TelegramNotificationService } from "../telegram";
+import { TelegramNotificationService } from "../service/telegram";
 
 interface TerminalStatus {
   lastSeen: Date;

@@ -2,7 +2,7 @@ import { MqttClient, connect } from "mqtt"; // import connect from mqtt
 import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 import { Response, checkTerminalUpdate, payForRide } from "./provider";
 import { Message } from "./types";
-import { getSubscriptionFee } from "./provider/send-terminal-config";
+import { getSubscriptionFee } from "./service/config/send-terminal-config";
 import { TerminalMonitorService } from "./online-state-tg";
 const TerminalResponseStatus = {
   200: { value: "<200!", description: "CONNECTION_CHECK_STATUS" },
