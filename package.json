@@ -1,13 +1,7 @@
 {
   "scripts": {
-    "publisher": "npx ts-node ./src/publisher.ts",
-    "check": "npx ts-node ./src/publisher.ts check",
-    "test": "npx ts-node ./src/publisher.ts test",
-    "pay": "npx ts-node ./src/publisher.ts pay",
-    "confirmpayment": "npx ts-node ./src/publisher.ts confirmpayment",
-    "ready": "npx ts-node ./src/publisher.ts ready",
-    "start": "npx ts-node ./src/subscriber.ts",
-    "start:prod": "node ./dist/subscriber.js",
+    "start": "npx ts-node ./src/main.ts",
+    "start:prod": "node ./dist/src/main.js",
     "build": "tsc"
   },
   "dependencies": {

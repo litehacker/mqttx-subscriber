@@ -149,3 +149,13 @@ model Ride {
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
   terminal       Terminal      @relation(fields: [terminalId], references: [id])
 }
+
+model Firmware {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  version     Int
+  lastAddress String
+  software    String
+  notes       String
+}

@@ -5,6 +5,7 @@ import { MqttClient } from "mqtt";
 import { Card, Family, Subscription } from "@prisma/client";
 import prisma from "../../prisma/client";
 dotenv.config();
+
 const STATUS_CODES = {
   SUCCESS: 200,
   FAILED_MISSING_CARD: 296,
@@ -24,38 +25,8 @@ export const checkTerminalUpdate = (
   };
 }> => {
   return new Promise((resolve, reject) => {
-    const data = JSON.stringify(terminal);
-    const config = {
-      method: "post",
-      maxBodyLength: Infinity,
-      url: process.env.UPDATE_CHECK_URL,
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-      data: data,
-    };
-    axios
-      .request(config)
-      .then(
-        (response: {
-          data: {
-            update: boolean;
-            _firmware?: {
-              LastAddress: string;
-              Version: number;
-              Code: string;
-              Date: Date;
-              Name: string;
-            };
-          };
-        }) => {
-          resolve(response.data);
-        }
-      )
-      .catch((error) => {
-        reject(error);
-      });
+    //find the latest firmware (max version)
+    reject("Not implemented");
   });
 };
 
