@@ -51,7 +51,7 @@ client.on("error", function (error) {
   console.error("error", error);
 });
 client.on("connect", function () {
-  console.info("connected to broker");
+  console.info("connected to broker, environment:", process.env.NODE_ENV);
 
   monitorService.start();
   console.log();
@@ -120,6 +120,7 @@ client.on("message", async function (topic, message) {
         send400(client, data.content.terminalID);
         return;
       } else {
+        console.log("Payment request started");
         const response = new Response(
           client,
           data.content.terminalID,
@@ -127,6 +128,9 @@ client.on("message", async function (topic, message) {
           data.content.userID ?? "unknown",
           false
         );
+        console.log("Payment request received", {
+          response,
+        });
         payForRide({ response });
       }
     } else if (data.operationType === "acknowledge") {
