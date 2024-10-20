@@ -1,8 +1,7 @@
-import axios from "axios";
 import * as dotenv from "dotenv";
-import { MakePaymentResponse, Message } from "../types";
+import { MakePaymentResponse } from "../types";
 import { MqttClient } from "mqtt";
-import { Card, Family, Subscription } from "@prisma/client";
+import { Card, Family, Firmware, Subscription } from "@prisma/client";
 import prisma from "../../prisma/client";
 dotenv.config();
 
@@ -12,21 +11,30 @@ const STATUS_CODES = {
   FAILED_INACTIVE_CARD: 297,
   FAILED_INSUFFICIENT_BALANCE: 291,
 };
-export const checkTerminalUpdate = (
-  terminal: Message["payload"]["content"]
-): Promise<{
+export const checkTerminalUpdate = (terminal: {
+  firmwareVersion: number;
+  terminalID: string;
+}): Promise<{
   update: boolean;
-  _firmware?: {
-    LastAddress: string;
-    Version: number;
-    Code: string;
-    Date: Date;
-    Name: string;
-  };
+  _firmware?: Firmware;
 }> => {
-  return new Promise((resolve, reject) => {
-    //find the latest firmware (max version)
-    reject("Not implemented");
+  return new Promise(async (resolve, reject) => {
+    // get the latest firmware version (max number)
+    try {
+      const firmware = await prisma.firmware.findFirst({
+        orderBy: { version: "desc" },
+      });
+      if (!firmware) {
+        reject("No firmware found");
+      } else if (firmware.version > terminal.firmwareVersion) {
+        resolve({ update: true, _firmware: firmware });
+      } else {
+        reject("No update available");
+      }
+    } catch (error) {
+      console.error("Error getting firmware version:", error);
+      reject("Error getting firmware version");
+    }
   });
 };
 

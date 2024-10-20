@@ -2,14 +2,15 @@
   "scripts": {
     "start": "npx ts-node ./src/main.ts",
     "start:prod": "node ./dist/src/main.js",
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate": "npx prisma migrate deploy",
     "build": "tsc"
   },
   "dependencies": {
     "@prisma/client": "^5.16.1",
-    "axios": "^1.4.0",
+    "axios": "^1.7.7",
     "dotenv": "^16.4.5",
-    "mqtt": "^5.3.5",
-    "prompt-sync": "^4.2.0"
+    "mqtt": "^5.3.5"
   },
   "devDependencies": {
     "@tsconfig/node18": "^2.0.0",

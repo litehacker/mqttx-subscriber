@@ -154,7 +154,7 @@ model Firmware {
   id          String   @id @default(cuid())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  version     Int
+  version     Int      @default(autoincrement())
   lastAddress String
   software    String
   notes       String
