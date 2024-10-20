@@ -8,10 +8,8 @@ To start a TypeScript application using `ts-node` with PM2, you can use an ecosy
 module.exports = {
   apps: [
     {
-      name: "my-ts-app",
-      script: "node_modules/.bin/ts-node",
-      args: "./src/subscriber.ts",
-      interpreter: "none", // This tells PM2 to not use any specific interpreter
+      name: "MQTT Subscriber",
+      script: "./dist/src/main.js", // Point to the compiled JavaScript file
     },
   ],
 };
@@ -30,7 +28,7 @@ This method allows you to easily manage multiple applications and their configur
 Alternatively, you can start your application directly with PM2 without creating an `ecosystem.config.js` file, using the `--interpreter` flag:
 
 ```bash
-pm2 start node_modules/.bin/ts-node --interpreter none -- ./src/subscriber.ts
+pm2 start node_modules/.bin/ts-node --interpreter none -- ./src/main.ts
 ```
 
 Here, you're telling PM2 to use `ts-node` as the script to run, with `none` as the interpreter (meaning it should just execute the script directly), and then specifying the path to your TypeScript file.

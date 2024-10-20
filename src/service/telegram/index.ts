@@ -1,4 +1,6 @@
 import axios from "axios";
+import prisma from "../../../prisma/client";
+import { Terminal } from "@prisma/client";
 
 export class TelegramNotificationService {
   private botToken: string;
@@ -32,7 +34,7 @@ export class TelegramNotificationService {
 
   private formatMessage(message: string): string {
     const timestamp = new Date();
-    return `<b>Terminal Status Update</b>\n${timestamp}\n\n${message}`;
+    return `${message}\n${timestamp.toLocaleDateString()}`;
   }
 
   public async sendTerminalStatusUpdate(
@@ -40,7 +42,43 @@ export class TelegramNotificationService {
     status: "online" | "offline"
   ): Promise<void> {
     const emoji = status === "online" ? "🟢" : "🔴";
-    const message = `Terminal <code>${terminalId}</code> is now ${status} ${emoji}`;
+    let terminal: Partial<Terminal> & {
+      status: "online" | "offline";
+    } = {
+      id: terminalId,
+      status,
+    };
+    try {
+      const terminalData = await prisma.terminal.findUnique({
+        where: { id: terminalId },
+        include: {
+          entry: {
+            select: {
+              house: {
+                select: {
+                  address: true,
+                },
+              },
+              title: true,
+            },
+          },
+        },
+      });
+      if (!terminal) {
+        console.error("Terminal not found:", terminalId);
+      }
+      terminal = {
+        ...terminal,
+        ...terminalData,
+      };
+    } catch (error) {
+      console.error("Error fetching terminal:", error);
+    }
+    // @ts-ignore-next-line
+
+    const message = ` ${emoji} <b>${terminal?.entry?.house?.address} - ${terminal?.entry?.title}</b> Terminal with ID
+        <code>${terminalId}</code> is now ${status}`;
+
     await this.sendMessage(message);
   }
 }
