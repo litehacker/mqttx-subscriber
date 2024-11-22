@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 import { MakePaymentResponse } from "../types";
 import { MqttClient } from "mqtt";
-import { Card, Family, Firmware, Subscription } from "@prisma/client";
+import { Card, Entry, Family, Firmware, Subscription } from "@prisma/client";
 import prisma from "../../prisma/client";
 dotenv.config();
 
@@ -74,13 +74,28 @@ const MakePayment = async ({
         return failedResponse(STATUS_CODES.FAILED_INACTIVE_CARD);
       const { family } = card;
       if (isNextPaymentInFuture({ family })) {
-        await createRide({
-          prisma,
-          cardID,
-          terminalID,
-          family,
-        });
-        response.sendBalance(family.balance);
+        if (family?.entry?.id === terminalID) {
+          // we are in the same terminal where we have subscription
+          await createRide({
+            prisma,
+            cardID,
+            terminalID,
+            family,
+          });
+          response.sendBalance(family.balance);
+        } else {
+          // the subscription is somewhere else and we need to pay for the ride
+          if (family.balance >= family.subscription.rideFee) {
+            await processPayment({
+              prisma,
+              cardID,
+              terminalID,
+              family,
+            });
+          } else {
+            return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
+          }
+        }
       } else if (family.balance >= family.subscription.rideFee) {
         response.sendBalance(family.balance - family.subscription.rideFee);
         await processPayment({
@@ -185,12 +200,13 @@ async function getCardWithDetails({
   Card & {
     family: Family & {
       subscription: Subscription;
+      entry: Entry;
     };
   }
 > {
   return prisma.card.findUnique({
     where: { id: cardID },
-    include: { family: { include: { subscription: true } } },
+    include: { family: { include: { subscription: true, entry: true } } },
   });
 }
 
