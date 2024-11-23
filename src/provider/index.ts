@@ -74,7 +74,7 @@ const MakePayment = async ({
         return failedResponse(STATUS_CODES.FAILED_INACTIVE_CARD);
       const { family } = card;
       if (isNextPaymentInFuture({ family })) {
-        if (family?.entry?.id === terminalID) {
+        if (isTerminalInTheSameEntry({ entry: family?.entry, terminalID })) {
           // we are in the same terminal where we have subscription
           await createRide({
             prisma,
@@ -84,8 +84,8 @@ const MakePayment = async ({
           });
           response.sendBalance(family.balance);
         } else {
-          // the subscription is somewhere else and we need to pay for the ride
           if (family.balance >= family.subscription.rideFee) {
+            response.sendBalance(family.balance - family.subscription.rideFee);
             await processPayment({
               prisma,
               cardID,
@@ -200,14 +200,48 @@ async function getCardWithDetails({
   Card & {
     family: Family & {
       subscription: Subscription;
-      entry: Entry;
+      entry: Entry & {
+        id: string;
+        terminals: {
+          id: string;
+        }[];
+      };
     };
   }
 > {
   return prisma.card.findUnique({
     where: { id: cardID },
-    include: { family: { include: { subscription: true, entry: true } } },
+    include: {
+      family: {
+        include: {
+          subscription: true,
+          entry: {
+            select: {
+              id: true,
+              terminals: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   });
+}
+function isTerminalInTheSameEntry({
+  entry,
+  terminalID,
+}: {
+  entry: Entry & {
+    terminals: {
+      id: string;
+    }[];
+  };
+  terminalID: string;
+}) {
+  return entry.terminals.some((t) => t.id === terminalID);
 }
 
 function isNextPaymentInFuture({

@@ -74,3 +74,6 @@ pm2 startup
 Follow the instructions provided by the `pm2 startup` command to set up PM2 to automatically start your application when your system boots up.
 
 These steps should help you successfully deploy your application using PM2 with your [`pm2-subscriber-conf.json`](command:_github.copilot.openRelativePath?%5B%7B%22scheme%22%3A%22file%22%2C%22authority%22%3A%22%22%2C%22path%22%3A%22%2FC%3A%2FUsers%2Fnatce%2FOneDrive%2FDocuments%2FGitHub%2Fmqttx-subscriber%2Fpm2-subscriber-conf.json%22%2C%22query%22%3A%22%22%2C%22fragment%22%3A%22%22%7D%5D "c:\\Users\natce\OneDrive\Documents\GitHub\mqttx-subscriber\pm2-subscriber-conf.json") configuration file.
+
+for future updates use:
+`alias update_mqtt='cd ./mqttx-subscriber/ && git pull && npm run build && pm2 restart 3'`
