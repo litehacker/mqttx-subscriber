@@ -45,6 +45,8 @@ model Subscription {
   payments       Payment[]
   rides          Ride[]
   terminals      Terminal[]
+
+  @@index([lastPayment])
 }
 
 model Terminal {
@@ -79,9 +81,13 @@ model Family {
   cards          Card[]
   entry          Entry        @relation(fields: [entryId], references: [id])
   subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  Log            Log[]
   payments       Payment[]
   rides          Ride[]
   members        User[]       @relation("FamilyToUser")
+
+  @@index([balance])
+  @@index([lastPayment])
 }
 
 model User {
@@ -126,6 +132,8 @@ model Payment {
   commission        Int           @default(0)
   receiptId         Int           @unique @default(autoincrement())
   bankTransactionId String?       @unique
+  type              PaymentType?
+  Log               Log[]
   entry             Entry?        @relation(fields: [entryId], references: [id])
   family            Family?       @relation(fields: [familyId], references: [id])
   subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
@@ -158,4 +166,47 @@ model Firmware {
   lastAddress String
   software    String
   notes       String
+}
+
+model Log {
+  id        String   @id
+  timestamp DateTime @default(now())
+  level     LogLevel
+  type      LogType
+  message   String
+  familyId  String?
+  paymentId String?
+  metadata  Json?
+  duration  Int?
+  Family    Family?  @relation(fields: [familyId], references: [id])
+  Payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([familyId])
+  @@index([level])
+  @@index([paymentId])
+  @@index([timestamp])
+  @@index([type])
+}
+
+enum PaymentType {
+  BALANCE
+  CARDS
+  SUBSCRIPTION
+  RIDE
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum LogType {
+  PAYMENT_PROCESSING
+  PAYMENT_VERIFICATION
+  QUEUE_STATUS
+  BALANCE_UPDATE
+  SYSTEM_STATUS
+  RETRY_ATTEMPT
 }

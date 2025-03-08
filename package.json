@@ -7,7 +7,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@prisma/client": "^5.16.1",
+    "@prisma/client": "^5.22.0",
     "axios": "^1.7.7",
     "dotenv": "^16.4.5",
     "mqtt": "^5.3.5"
@@ -15,6 +15,7 @@
   "devDependencies": {
     "@tsconfig/node18": "^2.0.0",
     "@types/node": "^18.16.3",
+    "prisma": "^5.22.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4"
   }
