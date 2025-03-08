@@ -151,10 +151,9 @@ const MakePayment = async ({
         // if the family has enough balance to trigger payment for both the family cards and the subscription
 
         try {
-          const response = await axios.get(
-            `${process.env.API_URL}/api/trigger-payment/${card.pin}`
-          );
+          axios.get(`${process.env.API_URL}/api/trigger-payment/${card.pin}`);
         } catch (e) {
+          console.error("Failed to trigger payment for cards", card.pin);
           return failedResponse(STATUS_CODES.FAILED_TRIGGER_PAYMENT);
         }
         // ask to press the card again to continue
@@ -162,20 +161,43 @@ const MakePayment = async ({
       }
       const { family } = card;
       if (isTerminalInTheSameEntry({ entry: family?.entry, terminalID })) {
+        // we are in the same terminal where we have subscription
         if (isNextSubscriptionPaymentInFuture({ family })) {
-          // we are in the same terminal where we have subscription
+          // we don't need to pay
+          response.sendBalance(family.balance);
           await createRide({
             prisma,
             cardID,
             terminalID,
             family,
           });
-          response.sendBalance(family.balance);
-        } else if (family.balance >= family.entry.subscription.rideFee) {
-          response.sendBalance(
-            family.balance - family.entry.subscription.rideFee
-          );
-          await processPayment({
+        } else if (
+          !isLastCardsPaymentWithinLastMonth({ family: card.family })
+        ) {
+          // we need to pay for cards first!
+          const enoughToPayForCards =
+            family.balance >=
+            calculateCardsOnlyPriceInGel({
+              family: card.family,
+              defaultPriceExtraUser: card.family.subscription.priceExtraUser,
+            }) *
+              100;
+          if (enoughToPayForCards) {
+            try {
+              axios.get(
+                `${process.env.API_URL}/api/trigger-payment/${card.pin}`
+              );
+            } catch (e) {
+              console.error("Failed to trigger payment for cards", card.pin);
+              return failedResponse(STATUS_CODES.FAILED_TRIGGER_PAYMENT);
+            }
+            return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
+          } else {
+            return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
+          }
+        } else if (family.balance >= family.subscription.rideFee) {
+          response.sendBalance(family.balance - family.subscription.rideFee);
+          await processPaymentWithinTheSameEntry({
             prisma,
             cardID,
             terminalID,
@@ -186,15 +208,12 @@ const MakePayment = async ({
         }
       } else {
         // get entry. subscription.rideFee
-        const entry = await prisma.entry.findUnique({
-          where: { id: family.entryId },
-          select: { subscription: { select: { rideFee: true } } },
-        });
+        const entry = family.entry;
         if (family.balance >= (entry?.subscription?.rideFee || 0)) {
           response.sendBalance(
             family.balance - (entry?.subscription?.rideFee || 0)
           );
-          await processPayment({
+          await processPaymentAsGuest({
             prisma,
             cardID,
             terminalID,
@@ -204,12 +223,11 @@ const MakePayment = async ({
           return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
         }
       }
-
       return successResponse(family.balance);
     });
   } catch (error) {
     console.error("Transaction error. Try again.", error);
-    return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
+    return failedResponse(STATUS_CODES.FAILED_SERVER_ERROR);
   }
 };
 
@@ -418,7 +436,7 @@ async function createRide({
   });
 }
 
-async function processPayment({
+async function processPaymentWithinTheSameEntry({
   prisma,
   cardID,
   terminalID,
@@ -434,30 +452,108 @@ async function processPayment({
     };
   };
 }) {
-  const updatedFamily = await prisma.family.update({
-    where: { id: family.id },
-    data: { balance: { decrement: family.entry.subscription.rideFee } },
-  });
+  try {
+    // Run database operations concurrently
+    const [updatedFamily, , ,] = await Promise.all([
+      prisma.family.update({
+        where: { id: family.id },
+        data: { balance: { decrement: family.subscription.rideFee } },
+      }),
+      prisma.entry.update({
+        where: { id: family.entryId },
+        data: { balance: { increment: family.subscription.rideFee } },
+      }),
+      prisma.payment.create({
+        data: {
+          amount: family.subscription.rideFee,
+          description: "Ride fee deduction",
+          familyId: family.id,
+          subscriptionId: family.subscriptionId,
+          terminalId: terminalID,
+          entryId: family.entryId,
+          type: "RIDE",
+        },
+      }),
+      prisma.ride.create({
+        data: {
+          cardId: cardID,
+          terminalId: terminalID,
+          familyId: family.id,
+          subscriptionId: family.subscriptionId,
+          entryId: family.entryId,
+        },
+      }),
+    ]);
 
-  await prisma.entry.update({
-    where: { id: family.entryId },
-    data: { balance: { increment: family.entry.subscription.rideFee } },
-  });
+    // Update local balance to reflect changes
+    family.balance = updatedFamily.balance;
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    throw new Error("Failed to process payment");
+  }
+}
 
-  await prisma.payment.create({
-    data: {
-      amount: family.entry.subscription.rideFee,
-      description: "Ride fee deduction",
-      familyId: family.id,
-      subscriptionId: family.subscriptionId,
-      terminalId: terminalID,
-      entryId: family.entryId,
-      type: "RIDE",
-    },
-  });
+async function processPaymentAsGuest({
+  prisma,
+  cardID,
+  terminalID,
+  family,
+}: {
+  prisma: any;
+  cardID: string;
+  terminalID: string;
+  family: Family & {
+    subscription: Subscription;
+    entry: Entry & {
+      subscription: Subscription;
+    };
+  };
+}) {
+  try {
+    // Run database operations concurrently
+    const [updatedFamily, , ,] = await Promise.all([
+      prisma.family.update({
+        where: { id: family.id },
+        data: { balance: { decrement: family.entry.subscription.rideFee } },
+      }),
+      prisma.entry.updateMany({
+        where: {
+          terminals: {
+            some: {
+              id: terminalID,
+            },
+          },
+        },
+        data: { balance: { increment: family.entry.subscription.rideFee } },
+      }),
+      prisma.payment.create({
+        data: {
+          amount: family.entry.subscription.rideFee,
+          description: "Ride fee deduction guest",
+          familyId: family.id,
+          subscriptionId: family.subscriptionId,
+          terminalId: terminalID,
+          entryId: family.entryId,
+          type: "RIDE",
+        },
+      }),
+      prisma.ride.create({
+        data: {
+          cardId: cardID,
+          terminalId: terminalID,
+          familyId: family.id,
+          subscriptionId: family.subscriptionId,
+          entryId: family.entryId,
+        },
+      }),
+    ]);
 
-  await createRide({ prisma, cardID, terminalID, family });
-  family.balance = updatedFamily.balance; // Update local balance to reflect changes
+    // Update local balance to reflect changes
+    family.balance = updatedFamily.balance;
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    throw new Error("Failed to process payment");
+  }
 }
 
 function failedResponse(statusNumber: number): MakePaymentResponse {

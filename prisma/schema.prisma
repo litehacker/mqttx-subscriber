@@ -81,13 +81,13 @@ model Family {
   cards          Card[]
   entry          Entry        @relation(fields: [entryId], references: [id])
   subscription   Subscription @relation(fields: [subscriptionId], references: [id])
-  logs           Log[]
+  Log            Log[]
   payments       Payment[]
   rides          Ride[]
   members        User[]       @relation("FamilyToUser")
 
-  @@index([lastPayment])
   @@index([balance])
+  @@index([lastPayment])
 }
 
 model User {
@@ -133,7 +133,7 @@ model Payment {
   receiptId         Int           @unique @default(autoincrement())
   bankTransactionId String?       @unique
   type              PaymentType?
-  logs              Log[]
+  Log               Log[]
   entry             Entry?        @relation(fields: [entryId], references: [id])
   family            Family?       @relation(fields: [familyId], references: [id])
   subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
@@ -169,7 +169,7 @@ model Firmware {
 }
 
 model Log {
-  id        String   @id @default(cuid())
+  id        String   @id
   timestamp DateTime @default(now())
   level     LogLevel
   type      LogType
@@ -178,14 +178,14 @@ model Log {
   paymentId String?
   metadata  Json?
   duration  Int?
-  family    Family?  @relation(fields: [familyId], references: [id])
-  payment   Payment? @relation(fields: [paymentId], references: [id])
+  Family    Family?  @relation(fields: [familyId], references: [id])
+  Payment   Payment? @relation(fields: [paymentId], references: [id])
 
-  @@index([timestamp])
-  @@index([level])
-  @@index([type])
   @@index([familyId])
+  @@index([level])
   @@index([paymentId])
+  @@index([timestamp])
+  @@index([type])
 }
 
 enum PaymentType {
