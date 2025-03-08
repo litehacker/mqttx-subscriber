@@ -217,7 +217,7 @@ const MakePayment = async ({
             prisma,
             cardID,
             terminalID,
-            family,
+            familyId: family.id,
           });
         } else {
           return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
@@ -497,24 +497,32 @@ async function processPaymentAsGuest({
   prisma,
   cardID,
   terminalID,
-  family,
+  familyId,
 }: {
   prisma: any;
   cardID: string;
   terminalID: string;
-  family: Family & {
-    subscription: Subscription;
-    entry: Entry & {
-      subscription: Subscription;
-    };
-  };
+  familyId: string;
 }) {
   try {
     // Run database operations concurrently
+
+    const entry = await prisma.entry.findFirst({
+      where: {
+        terminals: {
+          some: {
+            id: terminalID,
+          },
+        },
+      },
+      include: {
+        subscription: true,
+      },
+    });
     const [updatedFamily, , ,] = await Promise.all([
       prisma.family.update({
-        where: { id: family.id },
-        data: { balance: { decrement: family.entry.subscription.rideFee } },
+        where: { id: familyId },
+        data: { balance: { decrement: entry.subscription.rideFee } },
       }),
       prisma.entry.updateMany({
         where: {
@@ -524,16 +532,16 @@ async function processPaymentAsGuest({
             },
           },
         },
-        data: { balance: { increment: family.entry.subscription.rideFee } },
+        data: { balance: { increment: entry.subscription.rideFee } },
       }),
       prisma.payment.create({
         data: {
-          amount: family.entry.subscription.rideFee,
+          amount: entry.subscription.rideFee,
           description: "Ride fee deduction guest",
-          familyId: family.id,
-          subscriptionId: family.subscriptionId,
+          familyId: familyId,
+          subscriptionId: entry.subscription.id,
           terminalId: terminalID,
-          entryId: family.entryId,
+          entryId: entry.id,
           type: "RIDE",
         },
       }),
@@ -541,15 +549,12 @@ async function processPaymentAsGuest({
         data: {
           cardId: cardID,
           terminalId: terminalID,
-          familyId: family.id,
-          subscriptionId: family.subscriptionId,
-          entryId: family.entryId,
+          familyId: familyId,
+          subscriptionId: entry.subscription.id,
+          entryId: entry.id,
         },
       }),
     ]);
-
-    // Update local balance to reflect changes
-    family.balance = updatedFamily.balance;
   } catch (error) {
     console.error("Error processing payment:", error);
     throw new Error("Failed to process payment");
