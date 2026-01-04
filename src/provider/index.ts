@@ -153,7 +153,11 @@ const MakePayment = async ({
         axios
           .get(`${process.env.API_URL}/api/trigger-payment/${card.pin}`)
           .catch((err) => {
-            console.error("Failed to trigger payment:", err.message);
+            console.error(
+              "Failed to trigger payment:",
+              err.message,
+              `${process.env.API_URL}/api/trigger-payment/${card.pin}`
+            );
           });
         // ask to press the card again to continue
         return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
