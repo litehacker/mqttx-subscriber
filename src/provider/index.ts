@@ -150,12 +150,11 @@ const MakePayment = async ({
         // Fire and forget - don't wait for response
         // if the family has enough balance to trigger payment for both the family cards and the subscription
 
-        try {
-          axios.get(`${process.env.API_URL}/api/trigger-payment/${card.pin}`);
-        } catch (e) {
-          console.error("Failed to trigger payment for cards", card.pin);
-          return failedResponse(STATUS_CODES.FAILED_TRIGGER_PAYMENT);
-        }
+        axios
+          .get(`${process.env.API_URL}/api/trigger-payment/${card.pin}`)
+          .catch((err) => {
+            console.error("Failed to trigger payment:", err.message);
+          });
         // ask to press the card again to continue
         return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
       }
@@ -183,14 +182,11 @@ const MakePayment = async ({
             }) *
               100;
           if (enoughToPayForCards) {
-            try {
-              axios.get(
-                `${process.env.API_URL}/api/trigger-payment/${card.pin}`
-              );
-            } catch (e) {
-              console.error("Failed to trigger payment for cards", card.pin);
-              return failedResponse(STATUS_CODES.FAILED_TRIGGER_PAYMENT);
-            }
+            axios
+              .get(`${process.env.API_URL}/api/trigger-payment/${card.pin}`)
+              .catch((err) => {
+                console.error("Failed to trigger payment:", err.message);
+              });
             return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
           } else {
             return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
@@ -519,6 +515,15 @@ async function processPaymentAsGuest({
         subscription: true,
       },
     });
+
+    if (!entry || !entry.subscription) {
+      console.error(
+        "Entry or subscription not found for terminal:",
+        terminalID
+      );
+      throw new Error("Entry or subscription not found for terminal");
+    }
+
     const [updatedFamily, , ,] = await Promise.all([
       prisma.family.update({
         where: { id: familyId },
