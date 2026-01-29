@@ -16,6 +16,37 @@ const STATUS_CODES = {
   FAILED_TRIGGER_PAYMENT: 598,
   FAILED_CARDS_NOT_PAID: 597,
 };
+
+/**
+ * Triggers payment renewal with a timeout to prevent hanging
+ * @param cardPin - The card PIN to trigger payment for
+ * @param timeoutMs - Timeout in milliseconds (default: 5000ms)
+ * @returns Promise that resolves when payment is triggered or timeout occurs
+ */
+const triggerPaymentWithTimeout = async (
+  cardPin: string,
+  timeoutMs: number = 5000,
+): Promise<void> => {
+  try {
+    await Promise.race([
+      axios.get(`${process.env.API_URL}/api/trigger-payment/${cardPin}`),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Payment trigger timeout")),
+          timeoutMs,
+        ),
+      ),
+    ]);
+    console.log(`Payment triggered successfully for card: ${cardPin}`);
+  } catch (err: any) {
+    console.error(
+      "Failed to trigger payment:",
+      err.message,
+      `${process.env.API_URL}/api/trigger-payment/${cardPin}`,
+    );
+    throw err; // Re-throw to allow caller to handle if needed
+  }
+};
 export const checkTerminalUpdate = (terminal: {
   firmwareVersion: number;
   terminalID: string;
@@ -69,7 +100,7 @@ const calculateSubscriptionWithCardsPrice = ({
   defaultPriceMonthly: number;
 }) => {
   const haveWePaidForCardsAlready = wasPaymentMadeWithinLastMonth(
-    family?.lastPayment
+    family?.lastPayment,
   ); // check if we paid for the cards already?
   const familiesPrice =
     (family?.cards?.length && !haveWePaidForCardsAlready
@@ -86,7 +117,7 @@ const calculateCardsOnlyPriceInGel = ({
   defaultPriceExtraUser: number;
 }) => {
   const haveWePaidForCardsAlready = wasPaymentMadeWithinLastMonth(
-    family?.lastPayment
+    family?.lastPayment,
   ); // check if we paid for the cards already?
   const familiesPrice =
     (family?.cards?.length && !haveWePaidForCardsAlready
@@ -147,18 +178,13 @@ const MakePayment = async ({
           })) &&
         enoughBalanceToPayCosts
       ) {
-        // Fire and forget - don't wait for response
+        // Trigger payment renewal with timeout to avoid hanging
         // if the family has enough balance to trigger payment for both the family cards and the subscription
-
-        axios
-          .get(`${process.env.API_URL}/api/trigger-payment/${card.pin}`)
-          .catch((err) => {
-            console.error(
-              "Failed to trigger payment:",
-              err.message,
-              `${process.env.API_URL}/api/trigger-payment/${card.pin}`
-            );
-          });
+        try {
+          await triggerPaymentWithTimeout(card.pin);
+        } catch (err) {
+          // Continue even if payment trigger fails - the error is already logged
+        }
         // ask to press the card again to continue
         return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
       }
@@ -186,11 +212,11 @@ const MakePayment = async ({
             }) *
               100;
           if (enoughToPayForCards) {
-            axios
-              .get(`${process.env.API_URL}/api/trigger-payment/${card.pin}`)
-              .catch((err) => {
-                console.error("Failed to trigger payment:", err.message);
-              });
+            try {
+              await triggerPaymentWithTimeout(card.pin);
+            } catch (err) {
+              // Continue even if payment trigger fails - the error is already logged
+            }
             return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
           } else {
             return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
@@ -211,7 +237,7 @@ const MakePayment = async ({
         const entry = family.entry;
         if (family.balance >= (entry?.subscription?.rideFee || 0)) {
           response.sendBalance(
-            family.balance - (entry?.subscription?.rideFee || 0)
+            family.balance - (entry?.subscription?.rideFee || 0),
           );
           await processPaymentAsGuest({
             prisma,
@@ -239,7 +265,7 @@ export class Response {
     private terminalID: string,
     private cardID: Card["id"],
     private cardOwner: string,
-    private remote: boolean
+    private remote: boolean,
   ) {}
   setCardOwner(cardOwner: string) {
     this.cardOwner = cardOwner;
@@ -274,7 +300,7 @@ export class Response {
         qos: 2,
         retain: false,
       },
-      callback
+      callback,
     );
   }
   sendBalance(balance: number, callback?: () => void) {
@@ -285,7 +311,7 @@ export class Response {
         qos: 2,
         retain: false,
       },
-      callback
+      callback,
     );
   }
 
@@ -523,7 +549,7 @@ async function processPaymentAsGuest({
     if (!entry || !entry.subscription) {
       console.error(
         "Entry or subscription not found for terminal:",
-        terminalID
+        terminalID,
       );
       throw new Error("Entry or subscription not found for terminal");
     }
