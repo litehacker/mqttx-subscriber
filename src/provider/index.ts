@@ -24,6 +24,10 @@ export const checkTerminalUpdate = (terminal: {
   _firmware?: Firmware;
 }> => {
   return new Promise(async (resolve, reject) => {
+    // Updates are disabled - terminals are always considered up to date
+    reject("No update available - updates disabled");
+
+    /* ORIGINAL CODE - Uncomment to re-enable updates
     // get the latest firmware version (max number)
     try {
       const firmware = await prisma.firmware.findFirst({
@@ -40,6 +44,7 @@ export const checkTerminalUpdate = (terminal: {
       console.error("Error getting firmware version:", error);
       reject("Error getting firmware version");
     }
+    */
   });
 };
 
@@ -69,7 +74,7 @@ const calculateSubscriptionWithCardsPrice = ({
   defaultPriceMonthly: number;
 }) => {
   const haveWePaidForCardsAlready = wasPaymentMadeWithinLastMonth(
-    family?.lastPayment
+    family?.lastPayment,
   ); // check if we paid for the cards already?
   const familiesPrice =
     (family?.cards?.length && !haveWePaidForCardsAlready
@@ -86,7 +91,7 @@ const calculateCardsOnlyPriceInGel = ({
   defaultPriceExtraUser: number;
 }) => {
   const haveWePaidForCardsAlready = wasPaymentMadeWithinLastMonth(
-    family?.lastPayment
+    family?.lastPayment,
   ); // check if we paid for the cards already?
   const familiesPrice =
     (family?.cards?.length && !haveWePaidForCardsAlready
@@ -156,7 +161,7 @@ const MakePayment = async ({
             console.error(
               "Failed to trigger payment:",
               err.message,
-              `${process.env.API_URL}/api/trigger-payment/${card.pin}`
+              `${process.env.API_URL}/api/trigger-payment/${card.pin}`,
             );
           });
         // ask to press the card again to continue
@@ -211,7 +216,7 @@ const MakePayment = async ({
         const entry = family.entry;
         if (family.balance >= (entry?.subscription?.rideFee || 0)) {
           response.sendBalance(
-            family.balance - (entry?.subscription?.rideFee || 0)
+            family.balance - (entry?.subscription?.rideFee || 0),
           );
           await processPaymentAsGuest({
             prisma,
@@ -239,7 +244,7 @@ export class Response {
     private terminalID: string,
     private cardID: Card["id"],
     private cardOwner: string,
-    private remote: boolean
+    private remote: boolean,
   ) {}
   setCardOwner(cardOwner: string) {
     this.cardOwner = cardOwner;
@@ -274,7 +279,7 @@ export class Response {
         qos: 2,
         retain: false,
       },
-      callback
+      callback,
     );
   }
   sendBalance(balance: number, callback?: () => void) {
@@ -285,7 +290,7 @@ export class Response {
         qos: 2,
         retain: false,
       },
-      callback
+      callback,
     );
   }
 
@@ -523,7 +528,7 @@ async function processPaymentAsGuest({
     if (!entry || !entry.subscription) {
       console.error(
         "Entry or subscription not found for terminal:",
-        terminalID
+        terminalID,
       );
       throw new Error("Entry or subscription not found for terminal");
     }
