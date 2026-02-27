@@ -25,7 +25,9 @@ export const checkTerminalUpdate = (terminal: {
 }> => {
   return new Promise(async (resolve, reject) => {
     // Updates are disabled - terminals are always considered up to date
-    reject("No update available - updates disabled");
+    if (process.env.DISABLE_UPDATES) {
+      reject("No update available - updates disabled");
+    }
 
     /* ORIGINAL CODE - Uncomment to re-enable updates*/
     // get the latest firmware version (max number)
