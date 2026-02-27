@@ -27,7 +27,7 @@ export const checkTerminalUpdate = (terminal: {
     // Updates are disabled - terminals are always considered up to date
     reject("No update available - updates disabled");
 
-    /* ORIGINAL CODE - Uncomment to re-enable updates
+    /* ORIGINAL CODE - Uncomment to re-enable updates*/
     // get the latest firmware version (max number)
     try {
       const firmware = await prisma.firmware.findFirst({
@@ -44,7 +44,7 @@ export const checkTerminalUpdate = (terminal: {
       console.error("Error getting firmware version:", error);
       reject("Error getting firmware version");
     }
-    */
+    /***END ORIGINAL CODE***/
   });
 };
 
