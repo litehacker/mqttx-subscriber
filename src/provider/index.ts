@@ -55,6 +55,12 @@ export const checkTerminalUpdate = (terminal: {
   _firmware?: Firmware;
 }> => {
   return new Promise(async (resolve, reject) => {
+    // Updates are disabled - terminals are always considered up to date
+    if (process.env.DISABLE_UPDATES) {
+      reject("No update available - updates disabled");
+    }
+
+    /* ORIGINAL CODE - Uncomment to re-enable updates*/
     // get the latest firmware version (max number)
     try {
       const firmware = await prisma.firmware.findFirst({
@@ -71,6 +77,7 @@ export const checkTerminalUpdate = (terminal: {
       console.error("Error getting firmware version:", error);
       reject("Error getting firmware version");
     }
+    /***END ORIGINAL CODE***/
   });
 };
 
@@ -185,6 +192,7 @@ const MakePayment = async ({
         } catch (err) {
           // Continue even if payment trigger fails - the error is already logged
         }
+
         // ask to press the card again to continue
         return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
       }

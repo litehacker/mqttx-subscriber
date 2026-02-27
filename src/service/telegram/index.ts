@@ -9,7 +9,7 @@ export class TelegramNotificationService {
   constructor(botToken: string, chatId: string) {
     if (!botToken || !chatId) {
       throw new Error(
-        "Bot token and chat ID are required for Telegram service"
+        "Bot token and chat ID are required for Telegram service",
       );
     }
     this.botToken = botToken;
@@ -19,7 +19,6 @@ export class TelegramNotificationService {
   public async sendMessage(message: string): Promise<void> {
     const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
     const formattedMessage = this.formatMessage(message);
-
     try {
       await axios.post(url, {
         chat_id: this.chatId,
@@ -39,7 +38,7 @@ export class TelegramNotificationService {
 
   public async sendTerminalStatusUpdate(
     terminalId: string,
-    status: "online" | "offline"
+    status: "online" | "offline",
   ): Promise<void> {
     const emoji = status === "online" ? "🟢" : "🔴";
     let terminal: Partial<Terminal> & {

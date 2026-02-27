@@ -103,10 +103,21 @@ export class TerminalMonitorService {
 
       if (data.operationType === "check") {
         const terminalId = data.content.terminalID;
+        if (!terminalId) return;
+
+        const now = new Date();
+        try {
+          await this.prisma.terminal.update({
+            where: { id: terminalId },
+            data: { lastOnline: now, active: true },
+          });
+        } catch (err) {
+          console.error(`Failed to update terminal ${terminalId} (lastOnline/active):`, err);
+        }
+
         const status = this.terminalStatuses.get(terminalId);
 
         if (status) {
-          const now = new Date();
           status.lastSeen = now;
           status.isOnline = true;
 
@@ -119,10 +130,12 @@ export class TerminalMonitorService {
             status.lastStatusSent = "online"; // Update last sent status
           }
         } else {
-          await this.telegramService.sendMessage(
-            `Received check from unknown terminal: ${terminalId}`
-          );
-          console.log(`Received check from unknown terminal: ${terminalId}`);
+          this.terminalStatuses.set(terminalId, {
+            lastSeen: now,
+            isOnline: true,
+            lastStatusSent: "online",
+          });
+          console.log(`Received check from previously unknown terminal: ${terminalId}`);
         }
       }
     } catch (error) {
@@ -163,9 +176,20 @@ export class TerminalMonitorService {
         }
       });
 
-      // Send status updates for offline terminals concurrently
+      // Persist active: false and send Telegram for offline terminals
       await Promise.all(
         offlineTerminals.map(async (terminalId) => {
+          try {
+            await this.prisma.terminal.update({
+              where: { id: terminalId },
+              data: { active: false },
+            });
+          } catch (error) {
+            console.error(
+              `Error setting terminal ${terminalId} inactive:`,
+              error
+            );
+          }
           try {
             await this.telegramService.sendTerminalStatusUpdate(
               terminalId,
