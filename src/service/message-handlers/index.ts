@@ -25,7 +25,7 @@ export function handlePayment(client: MqttClient, data: Message["payload"]) {
     data.content.terminalID,
     data.content.cardID ?? "unknown",
     data.content.userID ?? "unknown",
-    false
+    false,
   );
   payForRide({ response });
 }
@@ -42,7 +42,7 @@ const updatedDataChunks: {
 
 export function handleConfig(
   client: MqttClient,
-  data: Message["payload"]
+  data: Message["payload"],
 ): void {
   getSubscriptionFee(data.content.terminalID)
     .then((fee) => {
@@ -59,7 +59,7 @@ export function handleConfig(
         {
           qos: 2,
           retain: false,
-        }
+        },
       );
       console.error(e);
     });
@@ -67,7 +67,7 @@ export function handleConfig(
 
 export function handleAcknowledge(
   client: MqttClient,
-  data: Message["payload"]
+  data: Message["payload"],
 ): void {
   if (data.content.status === "success") {
     // Logic to handle acknowledgment of update
@@ -79,7 +79,7 @@ export function handleAcknowledge(
         sendEnd(
           client,
           data.content.terminalID,
-          updatedDataChunks[data.content.terminalID].version
+          updatedDataChunks[data.content.terminalID].version,
         );
         delete updatedDataChunks[data.content.terminalID];
         return;
@@ -92,7 +92,7 @@ export function handleAcknowledge(
         ],
         () => {
           updatedDataChunks[data.content.terminalID].index++;
-        }
+        },
       );
     } else {
       send200(client, data.content.terminalID);
@@ -102,7 +102,7 @@ export function handleAcknowledge(
 
 export function handleCheck(
   client: MqttClient,
-  data: Message["payload"]
+  data: Message["payload"],
 ): void {
   const terminal = {
     firmwareVersion: data.content.firmwareVersion,
@@ -110,6 +110,10 @@ export function handleCheck(
   };
   console.log("Checking for updates for terminal:", terminal.terminalID);
   if (terminal.firmwareVersion && terminal.terminalID) {
+    if (process.env.DISABLE_UPDATES) {
+      send200(client, terminal.terminalID);
+      return;
+    }
     console.log("Checking for updates for terminal:", terminal.terminalID);
     checkTerminalUpdate(terminal)
       .then((response) => {
@@ -124,7 +128,7 @@ export function handleCheck(
           sendErase(
             client,
             terminal.terminalID,
-            response._firmware.lastAddress
+            response._firmware.lastAddress,
           );
           setTimeout(() => {
             if (
