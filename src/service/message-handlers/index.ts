@@ -108,13 +108,13 @@ export function handleCheck(
     firmwareVersion: data.content.firmwareVersion,
     terminalID: data.content.terminalID,
   };
-  console.log("Checking for updates for terminal:", terminal.terminalID);
+  console.log("handle check started:", terminal.terminalID);
   if (terminal.firmwareVersion && terminal.terminalID) {
     if (process.env.DISABLE_UPDATES) {
       send200(client, terminal.terminalID);
       return;
     }
-    console.log("Checking for updates for terminal:", terminal.terminalID);
+    console.info("Checking for updates for terminal:", terminal.terminalID);
     checkTerminalUpdate(terminal)
       .then((response) => {
         if (response.update && response._firmware) {
