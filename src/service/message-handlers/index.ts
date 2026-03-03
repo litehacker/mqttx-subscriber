@@ -146,11 +146,7 @@ export function handleCheck(
         }
       })
       .catch((error) => {
-        if (error !== "No update available") {
-          console.info(error);
-        } else {
-          console.error(error);
-        }
+        console.error(error);
         send200(client, terminal.terminalID);
       });
   }

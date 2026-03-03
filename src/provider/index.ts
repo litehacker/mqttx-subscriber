@@ -71,7 +71,7 @@ export const checkTerminalUpdate = (terminal: {
       } else if (firmware.version > terminal.firmwareVersion) {
         resolve({ update: true, _firmware: firmware });
       } else {
-        reject("No update available");
+        resolve({ update: false, _firmware: firmware });
       }
     } catch (error) {
       console.error("Error getting firmware version:", error);
