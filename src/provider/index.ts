@@ -4,6 +4,7 @@ import { MqttClient } from "mqtt";
 import { Card, Entry, Family, Firmware, Subscription } from "@prisma/client";
 import prisma from "../../prisma/client";
 import axios from "axios";
+import { startOfDay, subMonths } from "date-fns";
 dotenv.config();
 
 const STATUS_CODES = {
@@ -137,14 +138,8 @@ const wasPaymentMadeWithinLastMonth = (lastPayment?: Date | null) => {
   if (!lastPayment) {
     return false;
   }
-  const currentDate = new Date();
-
-  // Calculate the same day of the previous month
-  const sameDayPreviousMonth = new Date(currentDate);
-  sameDayPreviousMonth.setMonth(currentDate.getMonth() - 1);
-
-  // Check if the date is before the same day of the previous month
-  return lastPayment >= sameDayPreviousMonth;
+  const threshold = startOfDay(subMonths(new Date(), 1));
+  return startOfDay(lastPayment) >= threshold;
 };
 
 const MakePayment = async ({
@@ -405,15 +400,7 @@ function isNextSubscriptionPaymentInFuture({
     subscription: Subscription;
   };
 }) {
-  const lastPaymentDate = new Date(family?.subscription?.lastPayment ?? 0);
-  const currentDate = new Date();
-
-  // Calculate the same day of the previous month
-  const sameDayPreviousMonth = new Date(currentDate);
-  sameDayPreviousMonth.setMonth(currentDate.getMonth() - 1);
-
-  const needsToPay = lastPaymentDate < sameDayPreviousMonth;
-  return !needsToPay;
+  return wasPaymentMadeWithinLastMonth(family.subscription?.lastPayment);
 }
 
 function isLastCardsPaymentWithinLastMonth({
@@ -421,15 +408,7 @@ function isLastCardsPaymentWithinLastMonth({
 }: {
   family: Family & { subscription: Subscription };
 }) {
-  const lastPaymentDate = new Date(family?.lastPayment ?? 0);
-  const currentDate = new Date();
-
-  // Calculate the same day of the previous month
-  const sameDayPreviousMonth = new Date(currentDate);
-  sameDayPreviousMonth.setMonth(currentDate.getMonth() - 1);
-
-  const needsToPay = lastPaymentDate < sameDayPreviousMonth;
-  return !needsToPay;
+  return wasPaymentMadeWithinLastMonth(family.lastPayment);
 }
 
 function isLastSubscriptionPaymentWithinLastMonth({
@@ -437,15 +416,7 @@ function isLastSubscriptionPaymentWithinLastMonth({
 }: {
   subscription: Subscription;
 }) {
-  const lastPaymentDate = new Date(subscription?.lastPayment ?? 0);
-  const currentDate = new Date();
-
-  // Calculate the same day of the previous month
-  const sameDayPreviousMonth = new Date(currentDate);
-  sameDayPreviousMonth.setMonth(currentDate.getMonth() - 1);
-
-  const needsToPay = lastPaymentDate < sameDayPreviousMonth;
-  return !needsToPay;
+  return wasPaymentMadeWithinLastMonth(subscription.lastPayment);
 }
 
 async function createRide({
