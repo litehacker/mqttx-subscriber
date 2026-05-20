@@ -71,30 +71,27 @@ export function handleAcknowledge(
 ): void {
   if (data.content.status === "success") {
     // Logic to handle acknowledgment of update
-    if (updatedDataChunks[data.content.terminalID]) {
-      if (
-        updatedDataChunks[data.content.terminalID].chunks.length ===
-        updatedDataChunks[data.content.terminalID].index
-      ) {
+    const chunkData = updatedDataChunks[data.content.terminalID];
+    if (chunkData) {
+      if (chunkData.chunks.length === chunkData.index) {
         sendEnd(
           client,
           data.content.terminalID,
-          updatedDataChunks[data.content.terminalID].version,
+          chunkData.version,
         );
         delete updatedDataChunks[data.content.terminalID];
         return;
       }
+      const chunk = chunkData.chunks[chunkData.index];
       sendChunk(
         client,
         data.content.terminalID,
-        updatedDataChunks[data.content.terminalID].chunks[
-          updatedDataChunks[data.content.terminalID].index
-        ],
+        chunk,
         () => {
           if (!updatedDataChunks[data.content.terminalID]) {
             return;
           }
-          updatedDataChunks[data.content.terminalID].index++;
+          chunkData.index++;
         },
       );
     } else {
