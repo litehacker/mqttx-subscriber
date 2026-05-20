@@ -19,15 +19,41 @@ export class TelegramNotificationService {
   public async sendMessage(message: string): Promise<void> {
     const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
     const formattedMessage = this.formatMessage(message);
-    try {
-      await axios.post(url, {
-        chat_id: this.chatId,
-        text: formattedMessage,
-        parse_mode: "HTML",
-      });
-      console.log("Message sent successfully to Telegram");
-    } catch (error) {
-      console.error("Error sending message to Telegram:", error);
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await axios.post(url, {
+          chat_id: this.chatId,
+          text: formattedMessage,
+          parse_mode: "HTML",
+        });
+        console.log("Message sent successfully to Telegram");
+        return;
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 429) {
+          const retryAfterHeader = error.response.headers?.["retry_after"] ?? error.response.headers?.["retry-after"];
+          const retryAfterSeconds = retryAfterHeader
+            ? parseFloat(retryAfterHeader)
+            : Math.pow(2, attempt - 1);
+          const delayMs = retryAfterSeconds * 1000;
+
+          if (attempt < maxAttempts) {
+            console.warn(
+              `Telegram rate limit hit (429). Retrying in ${retryAfterSeconds}s (attempt ${attempt}/${maxAttempts})...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          } else {
+            console.error(
+              `Error sending message to Telegram after ${maxAttempts} attempts:`,
+              error,
+            );
+          }
+        } else {
+          console.error("Error sending message to Telegram:", error);
+          return;
+        }
+      }
     }
   }
 
