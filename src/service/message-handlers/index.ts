@@ -91,6 +91,9 @@ export function handleAcknowledge(
           updatedDataChunks[data.content.terminalID].index
         ],
         () => {
+          if (!updatedDataChunks[data.content.terminalID]) {
+            return;
+          }
           updatedDataChunks[data.content.terminalID].index++;
         },
       );
