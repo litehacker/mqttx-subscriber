@@ -161,6 +161,22 @@ const MakePayment = async ({
       }
       if (!card.active)
         return failedResponse(STATUS_CODES.FAILED_INACTIVE_CARD);
+      const openRemainder = await openOneTimeRemainder(prisma, card.family.id);
+      if (openRemainder > 0) {
+        if (card.family.balance <= 0) {
+          return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
+        }
+        try {
+          await triggerPaymentWithTimeout(card.pin);
+        } catch (err) {
+          return failedResponse(STATUS_CODES.FAILED_TRIGGER_PAYMENT);
+        }
+        const stillOpen = await openOneTimeRemainder(prisma, card.family.id);
+        if (stillOpen > 0) {
+          return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
+        }
+        return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
+      }
       if (!process.env.API_URL) {
         failedResponse(599); // server error because of env.
         throw new Error("API_URL is not set in .env");
@@ -379,6 +395,17 @@ async function getCardWithDetails({
     },
   });
 }
+async function openOneTimeRemainder(db: any, familyId: string): Promise<number> {
+  const charges = await db.familyOneTimeCharge.findMany({
+    where: { familyId, cancelledAt: null },
+    select: { amount: true, paidAmount: true },
+  });
+  return charges.reduce((sum: number, charge: { amount: number; paidAmount: number }) => {
+    if (charge.paidAmount >= charge.amount) return sum;
+    return sum + (charge.amount - charge.paidAmount);
+  }, 0);
+}
+
 function isTerminalInTheSameEntry({
   entry,
   terminalID,

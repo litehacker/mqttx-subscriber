@@ -85,6 +85,7 @@ model Family {
   payments       Payment[]
   rides          Ride[]
   members        User[]       @relation("FamilyToUser")
+  oneTimeCharges FamilyOneTimeCharge[]
 
   @@index([balance])
   @@index([lastPayment])
@@ -129,16 +130,38 @@ model Payment {
   familyId          String?
   subscriptionId    String?
   terminalId        String?
-  commission        Int           @default(0)
-  receiptId         Int           @unique @default(autoincrement())
-  bankTransactionId String?       @unique
-  type              PaymentType?
-  Log               Log[]
+  commission           Int           @default(0)
+  receiptId            Int           @unique @default(autoincrement())
+  bankTransactionId    String?       @unique
+  type                 PaymentType?
+  effectivePaymentDate DateTime?
+  collector            ChargeCollector?
+  oneTimeChargeId      String?
+  Log                  Log[]
+  oneTimeCharge        FamilyOneTimeCharge? @relation(fields: [oneTimeChargeId], references: [id])
   entry             Entry?        @relation(fields: [entryId], references: [id])
   family            Family?       @relation(fields: [familyId], references: [id])
   subscription      Subscription? @relation(fields: [subscriptionId], references: [id])
   terminal          Terminal?     @relation(fields: [terminalId], references: [id])
   user              User?         @relation(fields: [userId], references: [id])
+
+  @@index([oneTimeChargeId])
+}
+
+model FamilyOneTimeCharge {
+  id          String           @id @default(cuid())
+  familyId    String
+  name        String
+  amount      Int
+  paidAmount  Int              @default(0)
+  collector   ChargeCollector
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  cancelledAt DateTime?
+  family      Family           @relation(fields: [familyId], references: [id])
+  payments    Payment[]
+
+  @@index([familyId, createdAt])
 }
 
 model Ride {
@@ -193,6 +216,13 @@ enum PaymentType {
   CARDS
   SUBSCRIPTION
   RIDE
+  ADMIN_EXTENSION
+  ONE_TIME
+}
+
+enum ChargeCollector {
+  LIFTPASS
+  CLIENT
 }
 
 enum LogLevel {
