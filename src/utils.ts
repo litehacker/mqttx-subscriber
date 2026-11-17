@@ -1,14 +1,18 @@
 import { MqttClient } from "mqtt";
 
 export function sendErase(client: MqttClient, id: string, lastAddress: string) {
-  client.publish(
-    `t${id}`,
-    `<ERASE ${lastAddress}!`,
-    { qos: 2, retain: false },
-    () => {
-      console.log("Erase command sent:", `t${id}`, `<ERASE ${lastAddress}!`);
-    }
-  );
+  // Never send ERASE. Do not re-enable this publish, and do not gate it on an environment variable.
+  void client;
+  void id;
+  void lastAddress;
+  // client.publish(
+  //   `t${id}`,
+  //   `<ERASE ${lastAddress}!`,
+  //   { qos: 2, retain: false },
+  //   () => {
+  //     console.log("Erase command sent:", `t${id}`, `<ERASE ${lastAddress}!`);
+  //   }
+  // );
 }
 
 export function sendChunk(

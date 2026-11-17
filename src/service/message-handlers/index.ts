@@ -5,7 +5,6 @@ import {
   send400,
   sendChunk,
   sendEnd,
-  sendErase,
   splitString,
 } from "../../utils";
 import { checkTerminalUpdate, payForRide } from "../../provider";
@@ -125,11 +124,12 @@ export function handleCheck(
             startTime: new Date(),
             lastAddress: response._firmware.lastAddress,
           };
-          sendErase(
-            client,
-            terminal.terminalID,
-            response._firmware.lastAddress,
-          );
+          // Never send ERASE. Do not re-enable this call, and do not gate it on an environment variable.
+          // sendErase(
+          //   client,
+          //   terminal.terminalID,
+          //   response._firmware.lastAddress,
+          // );
           setTimeout(() => {
             if (
               updatedDataChunks[terminal.terminalID] &&
