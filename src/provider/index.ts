@@ -179,7 +179,7 @@ const MakePayment = async ({
       });
       const cardDue = cardFeeDueTetri(
         cardsPaid,
-        card.family.cards.length,
+        card.family.cards.filter((item) => item.active).length,
         card.family.subscription.priceExtraUser,
       );
       const monthlyDue = subscriptionDueTetri(
