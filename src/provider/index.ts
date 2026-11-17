@@ -29,15 +29,22 @@ const triggerPaymentWithTimeout = async (
   timeoutMs: number = 5000,
 ): Promise<void> => {
   try {
-    await Promise.race([
+    const response = await Promise.race([
       axios.get(`${process.env.API_URL}/api/trigger-payment/${cardPin}`),
-      new Promise((_, reject) =>
+      new Promise<never>((_, reject) =>
         setTimeout(
           () => reject(new Error("Payment trigger timeout")),
           timeoutMs,
         ),
       ),
     ]);
+    const cut = response.data as {
+      cards?: { success?: boolean };
+      subscription?: { success?: boolean };
+    };
+    if (!cut?.cards?.success || !cut?.subscription?.success) {
+      throw new Error("Payment trigger did not cut the due fees");
+    }
     console.log(`Payment triggered successfully for card: ${cardPin}`);
   } catch (err: any) {
     console.error(
@@ -98,41 +105,24 @@ export const payForRide = async ({ response }: { response: Response }) => {
   }
 };
 
-const calculateSubscriptionWithCardsPrice = ({
-  family,
-  defaultPriceExtraUser,
-  defaultPriceMonthly,
-}: {
-  family?: Family & { cards: Card[] };
-  defaultPriceExtraUser: number;
-  defaultPriceMonthly: number;
-}) => {
-  const haveWePaidForCardsAlready = wasPaymentMadeWithinLastMonth(
-    family?.lastPayment,
-  ); // check if we paid for the cards already?
-  const familiesPrice =
-    (family?.cards?.length && !haveWePaidForCardsAlready
-      ? family.cards.length
-      : 0) * defaultPriceExtraUser;
-  return defaultPriceMonthly + familiesPrice;
-};
+/** Matches liftpass `src/lib/renewal-due.ts`. A zero price is not due. */
+function cardFeeDueTetri(
+  cardsPaidThisMonth: boolean,
+  cardCount: number,
+  priceExtraUser: number,
+): number {
+  if (cardsPaidThisMonth) return 0;
+  const amount = cardCount * priceExtraUser;
+  return amount > 0 ? amount : 0;
+}
 
-const calculateCardsOnlyPriceInGel = ({
-  family,
-  defaultPriceExtraUser,
-}: {
-  family?: Family & { cards: Card[] };
-  defaultPriceExtraUser: number;
-}) => {
-  const haveWePaidForCardsAlready = wasPaymentMadeWithinLastMonth(
-    family?.lastPayment,
-  ); // check if we paid for the cards already?
-  const familiesPrice =
-    (family?.cards?.length && !haveWePaidForCardsAlready
-      ? family.cards.length
-      : 0) * defaultPriceExtraUser;
-  return familiesPrice / 100;
-};
+function subscriptionDueTetri(
+  subscriptionPaidThisMonth: boolean,
+  priceMonthly: number,
+): number {
+  if (subscriptionPaidThisMonth) return 0;
+  return priceMonthly > 0 ? priceMonthly : 0;
+}
 
 const wasPaymentMadeWithinLastMonth = (lastPayment?: Date | null) => {
   if (!lastPayment) {
@@ -181,37 +171,39 @@ const MakePayment = async ({
         failedResponse(599); // server error because of env.
         throw new Error("API_URL is not set in .env");
       }
-      const enoughBalanceToPayCosts =
-        card.family.balance >=
-        calculateSubscriptionWithCardsPrice({
-          family: { ...card.family, cards: card.family.cards },
-          defaultPriceExtraUser: card.family.subscription.priceExtraUser,
-          defaultPriceMonthly: card.family.subscription.priceMonthly,
-        });
+      const cardsPaid = isLastCardsPaymentWithinLastMonth({
+        family: card.family,
+      });
+      const subscriptionPaid = isLastSubscriptionPaymentWithinLastMonth({
+        subscription: card.family.subscription,
+      });
+      const cardDue = cardFeeDueTetri(
+        cardsPaid,
+        card.family.cards.length,
+        card.family.subscription.priceExtraUser,
+      );
+      const monthlyDue = subscriptionDueTetri(
+        subscriptionPaid,
+        card.family.subscription.priceMonthly,
+      );
+      const renewalDue = cardDue + monthlyDue;
 
-      if (
-        (!isLastCardsPaymentWithinLastMonth({ family: card.family }) ||
-          !isLastSubscriptionPaymentWithinLastMonth({
-            subscription: card.family.subscription,
-          })) &&
-        enoughBalanceToPayCosts
-      ) {
-        // Trigger payment renewal with timeout to avoid hanging
-        // if the family has enough balance to trigger payment for both the family cards and the subscription
+      if (renewalDue > 0 && card.family.balance >= renewalDue) {
         try {
           await triggerPaymentWithTimeout(card.pin);
         } catch (err) {
-          // Continue even if payment trigger fails - the error is already logged
+          return failedResponse(STATUS_CODES.FAILED_TRIGGER_PAYMENT);
         }
-
-        // ask to press the card again to continue
         return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
       }
       const { family } = card;
       if (isTerminalInTheSameEntry({ entry: family?.entry, terminalID })) {
         // we are in the same terminal where we have subscription
-        if (isNextSubscriptionPaymentInFuture({ family })) {
-          // we don't need to pay
+        const passActive =
+          isNextSubscriptionPaymentInFuture({ family }) ||
+          family.subscription.priceMonthly <= 0;
+        if (passActive) {
+          // Card fee is unaffordable here; a balance that covers it renewed above.
           response.sendBalance(family.balance);
           await createRide({
             prisma,
@@ -219,27 +211,16 @@ const MakePayment = async ({
             terminalID,
             family,
           });
-        } else if (
-          !isLastCardsPaymentWithinLastMonth({ family: card.family })
-        ) {
-          // we need to pay for cards first!
-          const enoughToPayForCards =
-            family.balance >=
-            calculateCardsOnlyPriceInGel({
-              family: card.family,
-              defaultPriceExtraUser: card.family.subscription.priceExtraUser,
-            }) *
-              100;
-          if (enoughToPayForCards) {
+        } else if (cardDue > 0) {
+          if (family.balance >= cardDue) {
             try {
               await triggerPaymentWithTimeout(card.pin);
             } catch (err) {
-              // Continue even if payment trigger fails - the error is already logged
+              return failedResponse(STATUS_CODES.FAILED_TRIGGER_PAYMENT);
             }
             return failedResponse(STATUS_CODES.SUCCESS_PAYMENT_RENEWED);
-          } else {
-            return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
           }
+          return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
         } else if (family.balance >= family.subscription.rideFee) {
           response.sendBalance(family.balance - family.subscription.rideFee);
           await processPaymentWithinTheSameEntry({
@@ -252,7 +233,7 @@ const MakePayment = async ({
           return failedResponse(STATUS_CODES.FAILED_INSUFFICIENT_BALANCE);
         }
       } else {
-        // get entry. subscription.rideFee
+        // A payable home bill already returned above. Otherwise charge the host fee.
         const entry = family.entry;
         if (family.balance >= (entry?.subscription?.rideFee || 0)) {
           response.sendBalance(
