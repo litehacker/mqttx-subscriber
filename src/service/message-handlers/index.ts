@@ -130,6 +130,7 @@ export function handleCheck(
           //   terminal.terminalID,
           //   response._firmware.lastAddress,
           // );
+          send200(client, terminal.terminalID);
           setTimeout(() => {
             if (
               updatedDataChunks[terminal.terminalID] &&
@@ -149,5 +150,7 @@ export function handleCheck(
         console.error(error);
         send200(client, terminal.terminalID);
       });
+  } else if (terminal.terminalID) {
+    send200(client, terminal.terminalID);
   }
 }
